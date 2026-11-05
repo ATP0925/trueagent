@@ -1,0 +1,14 @@
+{
+  "name": "trueagent",
+  "version": "1.0.0",
+  "description": "Universal AI agent enhancement framework for browser control, voice feedback, and safety.",
+  "author": "ATP0925",
+  "license": "MIT",
+  "skills": [
+    "webpilot",
+    "voxcore",
+    "sentinel",
+    "reviewforge",
+    "cortex"
+  ]
+}

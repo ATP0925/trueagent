@@ -1,0 +1,11 @@
+---
+description: "TrueAgent Universal Safety and Tooling Rules for Cursor"
+globs: ["*"]
+alwaysApply: true
+---
+
+# TrueAgent Rules for Cursor
+
+- Adhere to the canonical security and browser automation rules defined in `AGENTS.md`.
+- Never stage or commit environment secret files (`.env*`).
+- Evaluate browser interactions through WebPilot CDP protocols.

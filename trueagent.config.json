@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "persona": {
+    "callsign": "Operator",
+    "tone": "concise",
+    "voice_feedback": true,
+    "language": "hi-IN"
+  },
+  "browser": {
+    "primary_browser": "brave",
+    "primary_port": 9222,
+    "secondary_browser": "chrome",
+    "secondary_port": 9223,
+    "headless": false,
+    "handoff_timeout_seconds": 60
+  },
+  "hardware": {
+    "ram_cloud_threshold_gb": 4.0,
+    "monitor_resources": true
+  },
+  "presets": {
+    "github": "https://github.com",
+    "docs": "https://devdocs.io",
+    "stackoverflow": "https://stackoverflow.com",
+    "youtube": "https://www.youtube.com",
+    "local_app": "http://localhost:3000"
+  },
+  "security": {
+    "enable_sentinel": true,
+    "pre_push_confirmation_steps": 2
+  }
+}
