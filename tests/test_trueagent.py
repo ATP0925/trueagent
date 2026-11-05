@@ -70,6 +70,13 @@ class TestTrueAgent(unittest.TestCase):
         self.assertEqual(coord.state, "INTERRUPTED")
         self.assertEqual(coord.interruption_count, 1)
 
+        # Mute test
+        coord.set_muted()
+        self.assertEqual(coord.state, "MUTED")
+        is_muted = coord.toggle_mute()
+        self.assertFalse(is_muted)
+        self.assertEqual(coord.state, "IDLE")
+
 
 if __name__ == "__main__":
     unittest.main()

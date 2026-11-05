@@ -37,6 +37,17 @@ class VoxBargeInCoordinator:
     def set_idle(self):
         self.state = "IDLE"
 
+    def set_muted(self):
+        self.state = "MUTED"
+
+    def toggle_mute(self) -> bool:
+        if self.state == "MUTED":
+            self.state = "IDLE"
+            return False
+        else:
+            self.state = "MUTED"
+            return True
+
 
 class VoxAudioStreamManager:
     """Handles sound card input (16kHz) and output (24kHz) streaming."""
@@ -145,3 +156,4 @@ class VoxAudioStreamManager:
                 self.output_stream.close()
             except Exception:
                 pass
+
