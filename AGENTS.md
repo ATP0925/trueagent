@@ -18,3 +18,4 @@ These instructions apply to all AI assistants operating in this workspace.
 ## 🔍 Code Quality Protocol
 - Before finalizing code changes, execute ReviewForge quality checks.
 - Eliminate residual debug logs (`console.log`, `debugger`, `print()`) before committing.
+

@@ -160,3 +160,4 @@ def speak(text: str, custom_callsign: str = None):
 if __name__ == "__main__":
     msg = sys.argv[1] if len(sys.argv) > 1 else "TrueAgent voice engine initialized."
     speak(msg)
+

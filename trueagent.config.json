@@ -28,5 +28,14 @@
   "security": {
     "enable_sentinel": true,
     "pre_push_confirmation_steps": 2
+  },
+  "voice_duplex": {
+    "enabled": true,
+    "live_model": "gemini-3.1-flash-live-preview",
+    "voice_name": "Puck",
+    "input_sample_rate": 16000,
+    "output_sample_rate": 24000,
+    "interruption_enabled": true
   }
 }
+

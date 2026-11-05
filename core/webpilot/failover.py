@@ -55,3 +55,4 @@ class FailoverNavigator:
                 return True, f"Secondary Failover (Port {self.secondary_port})", f"Cascade successful to secondary engine: {tab.get('id')}"
 
         return False, "None", f"Neither primary (port {self.primary_port}) nor secondary (port {self.secondary_port}) browser is reachable."
+

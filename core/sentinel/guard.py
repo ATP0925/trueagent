@@ -39,3 +39,4 @@ class SentinelGuard:
                             "sample": masked
                         })
         return findings
+

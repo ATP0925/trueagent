@@ -9,3 +9,4 @@ alwaysApply: true
 - Adhere to the canonical security and browser automation rules defined in `AGENTS.md`.
 - Never stage or commit environment secret files (`.env*`).
 - Evaluate browser interactions through WebPilot CDP protocols.
+

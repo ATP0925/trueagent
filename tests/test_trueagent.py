@@ -11,6 +11,7 @@ from core.webpilot.totp import generate_totp
 from core.reviewforge.reviewer import ReviewForge
 from core.sentinel.guard import SentinelGuard
 from core.voxcore.speak import sanitize_text
+from core.voxcore.duplex import VoxBargeInCoordinator
 
 
 class TestTrueAgent(unittest.TestCase):
@@ -58,6 +59,16 @@ class TestTrueAgent(unittest.TestCase):
         self.assertTrue(clean.startswith("Operator,"))
         self.assertNotIn("https://", clean)
         self.assertIn("A-P-I", clean)
+
+    def test_voxcore_barge_in_coordination(self):
+        coord = VoxBargeInCoordinator()
+        self.assertEqual(coord.state, "IDLE")
+        coord.set_speaking()
+        self.assertEqual(coord.state, "SPEAKING")
+        self.assertEqual(coord.turns_count, 1)
+        coord.trigger_interruption()
+        self.assertEqual(coord.state, "INTERRUPTED")
+        self.assertEqual(coord.interruption_count, 1)
 
 
 if __name__ == "__main__":
