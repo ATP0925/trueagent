@@ -13,6 +13,10 @@ DEFAULT_SECRET_PATTERNS = {
     "aws_access_key": r"\b(AKIA[0-9A-Z]{16})\b",
     "github_pat": r"\b(gh[pousr]_[A-Za-z0-9_]{36,255}|github_pat_[0-9a-zA-Z_]{82})\b",
     "google_api_key": r"\b(AIza[0-9A-Za-z\-_]{35})\b",
+    "openai_api_key": r"\b(sk-[a-zA-Z0-9]{48}|sk-proj-[a-zA-Z0-9_\-]{50,})\b",
+    "anthropic_api_key": r"\b(sk-ant-[a-zA-Z0-9_\-]{32,})\b",
+    "stripe_api_key": r"\b(sk_live_[0-9a-zA-Z]{24,}|rk_live_[0-9a-zA-Z]{24,})\b",
+    "huggingface_token": r"\b(hf_[a-zA-Z0-9]{34,})\b",
     "generic_secret": r"""(?i)\b(?:api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|password)\s*[:=]\s*['\"][A-Za-z0-9_\-!@#$%^&*]{8,128}['\"]"""
 }
 

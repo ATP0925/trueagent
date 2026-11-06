@@ -72,12 +72,38 @@ class VoxAudioStreamManager:
         self.input_stream = None
         self.output_stream = None
 
+        # Pure-NumPy highpass filter (>300Hz) to eliminate laptop fan rumble
+        cutoff = 300.0
+        RC = 1.0 / (2.0 * np.pi * cutoff)
+        dt = 1.0 / self.input_rate
+        self.alpha = float(RC / (RC + dt))
+        self.prev_x = 0.0
+        self.prev_y = 0.0
+
+    def filter_audio(self, x: np.ndarray) -> np.ndarray:
+        y = np.empty_like(x)
+        px = self.prev_x
+        py = self.prev_y
+        a = self.alpha
+        for i in range(len(x)):
+            curr_y = a * (py + x[i] - px)
+            y[i] = curr_y
+            px = x[i]
+            py = curr_y
+        self.prev_x = px
+        self.prev_y = py
+        return y
+
     def _input_callback(self, indata, frames, time_info, status):
         pcm = indata.copy()
-        raw_bytes = (pcm * 32767).astype(np.int16).tobytes()
+        if pcm.ndim > 1:
+            filtered = self.filter_audio(pcm[:, 0])
+        else:
+            filtered = self.filter_audio(pcm)
+        raw_bytes = (filtered * 32767).astype(np.int16).tobytes()
         self.input_queue.put(raw_bytes)
 
-        rms = np.sqrt(np.mean(pcm**2)) if len(pcm) > 0 else 0.0
+        rms = np.sqrt(np.mean(filtered**2)) if len(filtered) > 0 else 0.0
         if self.is_playing and rms > self.vad_threshold:
             self.flush()
             if self.on_interruption:

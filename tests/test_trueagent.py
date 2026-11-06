@@ -11,7 +11,8 @@ from core.webpilot.totp import generate_totp
 from core.reviewforge.reviewer import ReviewForge
 from core.sentinel.guard import SentinelGuard
 from core.voxcore.speak import sanitize_text
-from core.voxcore.duplex import VoxBargeInCoordinator
+from core.voxcore.duplex import VoxBargeInCoordinator, VoxAudioStreamManager
+import numpy as np
 
 
 class TestTrueAgent(unittest.TestCase):
@@ -76,6 +77,22 @@ class TestTrueAgent(unittest.TestCase):
         is_muted = coord.toggle_mute()
         self.assertFalse(is_muted)
         self.assertEqual(coord.state, "IDLE")
+
+    def test_voxcore_dsp_highpass_filtering(self):
+        mgr = VoxAudioStreamManager(input_rate=16000)
+        t = np.linspace(0, 0.05, 800)
+        fan_100 = np.sin(2 * np.pi * 100 * t)
+        voice_500 = np.sin(2 * np.pi * 500 * t)
+
+        filtered_fan = mgr.filter_audio(fan_100)
+        filtered_voice = mgr.filter_audio(voice_500)
+
+        rms_fan = np.sqrt(np.mean(filtered_fan**2))
+        rms_voice = np.sqrt(np.mean(filtered_voice**2))
+
+        # Fan noise attenuated, human voice preserved
+        self.assertLess(rms_fan, 0.35)
+        self.assertGreater(rms_voice, 0.50)
 
 
 if __name__ == "__main__":
