@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ATP0925/trueagent/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square" alt="Tests"></a>
+  <a href="https://github.com/ATP0925/trueagent/actions"><img src="https://img.shields.io/badge/tests-22%20passing-brightgreen?style=flat-square" alt="Tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <a href="https://github.com/ATP0925/trueagent"><img src="https://img.shields.io/badge/python-3.8+-informational?style=flat-square" alt="Python Version"></a>
   <a href="https://github.com/ATP0925/trueagent"><img src="https://img.shields.io/badge/platforms-7-success?style=flat-square" alt="Platforms"></a>
