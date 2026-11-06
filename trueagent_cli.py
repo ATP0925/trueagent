@@ -17,7 +17,6 @@ from core.cortex.router import CortexRouter, SystemMemoryInfo
 from core.sentinel.guard import SentinelGuard
 from core.reviewforge.reviewer import ReviewForge
 from core.webpilot.totp import generate_totp
-from core.voxcore.speak import sanitize_text
 
 def cmd_status():
     router = CortexRouter()
@@ -86,6 +85,14 @@ def main():
     p_rev = sub.add_parser("review", help="Review diff for code quality with ReviewForge")
     p_rev.add_argument("file", help="Path to diff file")
 
+    p_speak = sub.add_parser("speak", help="Speak text using neural voice")
+    p_speak.add_argument("text", nargs="+", help="Text to speak")
+
+    p_browser = sub.add_parser("browser", help="Navigate using WebPilot browser engine")
+    p_browser.add_argument("target", help="Target URL or preset name")
+
+    p_duplex = sub.add_parser("duplex", help="Inspect VoxCore full-duplex voice stream status")
+
     args = parser.parse_args()
 
     if args.command == "status":
@@ -96,6 +103,28 @@ def main():
         cmd_totp(args)
     elif args.command == "review":
         cmd_review(args)
+    elif args.command == "speak":
+        from core.voxcore.speak import speak
+        speak(" ".join(args.text))
+    elif args.command == "browser":
+        from core.webpilot.failover import FailoverNavigator
+        from core.webpilot.pilot import load_presets
+        presets = load_presets()
+        target_url = presets.get(args.target.lower(), args.target)
+        if not target_url.startswith(("http://", "https://")):
+            target_url = "https://" + target_url
+        nav = FailoverNavigator()
+        success, engine, details = nav.navigate(target_url)
+        if success:
+            print(f"✅ WebPilot navigated via {engine}: {details}")
+        else:
+            print(f"❌ Navigation failed: {details}")
+    elif args.command == "duplex":
+        from core.voxcore.duplex import VoxBargeInCoordinator, SOUNDDEVICE_AVAILABLE
+        print("🎙️ VoxCore Full-Duplex Engine Status:")
+        print(f"  • SoundDevice Available: {SOUNDDEVICE_AVAILABLE}")
+        coord = VoxBargeInCoordinator()
+        print(f"  • Turn Coordinator State: {coord.state}")
     else:
         cmd_status()
 

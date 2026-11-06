@@ -60,7 +60,8 @@ def sanitize_text(text: str, callsign: str = "Operator") -> str:
     clean = re.sub(r"https?://\S+", "", clean)
     # Remove local filesystem paths
     clean = re.sub(r"[A-Za-z]:\\[\w\\]+", "", clean)
-    clean = re.sub(r"/[a-zA-Z0-9_\-./]+", "", clean)
+    # Remove filesystem paths (must start with / followed by directory-like structure)
+    clean = re.sub(r"(?:^|\s)/(?:[a-zA-Z0-9_\-]+/){2,}[a-zA-Z0-9_\-./]*", "", clean)
     # Remove markdown formatting characters
     clean = re.sub(r"[*_~#>`|]", " ", clean)
     clean = re.sub(r"\s+", " ", clean).strip()

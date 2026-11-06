@@ -7,7 +7,7 @@ if pkg_root not in sys.path:
     sys.path.insert(0, pkg_root)
 
 from core.cortex.router import CortexRouter, SystemMemoryInfo
-from core.webpilot.totp import generate_totp
+from core.webpilot.totp import generate_totp, verify_totp
 from core.reviewforge.reviewer import ReviewForge
 from core.sentinel.guard import SentinelGuard
 from core.voxcore.speak import sanitize_text, speak_native
@@ -17,6 +17,10 @@ import numpy as np
 
 
 class TestTrueAgent(unittest.TestCase):
+
+    def setUp(self):
+        # Reset any shared state between tests
+        pass
 
     def test_cortex_memory_retrieval(self):
         ram = SystemMemoryInfo.get_available_ram_gb()
@@ -103,13 +107,14 @@ class TestTrueAgent(unittest.TestCase):
         self.assertEqual(coord.state, "IDLE")
 
     def test_voxcore_dsp_highpass_filtering(self):
-        mgr = VoxAudioStreamManager(input_rate=16000)
+        mgr_fan = VoxAudioStreamManager(input_rate=16000)
+        mgr_voice = VoxAudioStreamManager(input_rate=16000)
         t = np.linspace(0, 0.05, 800)
         fan_100 = np.sin(2 * np.pi * 100 * t)
         voice_500 = np.sin(2 * np.pi * 500 * t)
 
-        filtered_fan = mgr.filter_audio(fan_100)
-        filtered_voice = mgr.filter_audio(voice_500)
+        filtered_fan = mgr_fan.filter_audio(fan_100)
+        filtered_voice = mgr_voice.filter_audio(voice_500)
 
         rms_fan = np.sqrt(np.mean(filtered_fan**2))
         rms_voice = np.sqrt(np.mean(filtered_voice**2))
@@ -186,6 +191,53 @@ class TestTrueAgent(unittest.TestCase):
             self.assertEqual(mock_run.call_count, 2)
             args, kwargs = mock_run.call_args_list[1]
             self.assertIn("WMPlayer.OCX", args[0][3])
+
+    def test_webpilot_totp_verification(self):
+        secret = "JBSWY3DPEHPK3PXP"
+        current_code = generate_totp(secret)
+        self.assertTrue(verify_totp(secret, current_code))
+        prev_code = generate_totp(secret, time_offset=-1)
+        self.assertTrue(verify_totp(secret, prev_code, window=1))
+        next_code = generate_totp(secret, time_offset=1)
+        self.assertTrue(verify_totp(secret, next_code, window=1))
+        # Invalid code check
+        self.assertFalse(verify_totp(secret, "000000" if current_code != "000000" else "111111"))
+
+    def test_webpilot_totp_invalid_secret(self):
+        with self.assertRaises(ValueError) as ctx:
+            generate_totp("invalid! secret! with illegal base32 characters #@$")
+        self.assertIn("Invalid TOTP secret", str(ctx.exception))
+
+    def test_voxcore_sanitization_preserves_fractions(self):
+        raw = "Our accuracy reached 95 / 100 on the evaluation benchmark."
+        clean = sanitize_text(raw, callsign="Operator")
+        self.assertIn("95 / 100", clean)
+
+    def test_voxcore_sanitization_removes_filesystem_paths(self):
+        raw = "Check the logs at /var/log/app/server.log and /usr/local/bin/python"
+        clean = sanitize_text(raw, callsign="Operator")
+        self.assertNotIn("/var/log/app/server.log", clean)
+        self.assertNotIn("/usr/local/bin/python", clean)
+
+    def test_trueagent_cli_subcommands_and_no_dead_import(self):
+        from pathlib import Path
+        import subprocess
+        cli_path = Path(pkg_root) / "trueagent_cli.py"
+        src = cli_path.read_text(encoding="utf-8")
+        self.assertNotIn("sanitize_text", src)
+
+        res = subprocess.run([sys.executable, str(cli_path), "--help"], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("speak", res.stdout)
+        self.assertIn("browser", res.stdout)
+        self.assertIn("duplex", res.stdout)
+
+    def test_setup_powershell_userprofile(self):
+        from pathlib import Path
+        setup_path = Path(pkg_root) / "setup_trueagent.py"
+        src = setup_path.read_text(encoding="utf-8")
+        self.assertNotIn("%USERPROFILE%", src)
+        self.assertIn("$env:USERPROFILE", src)
 
 
 if __name__ == "__main__":

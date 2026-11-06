@@ -64,7 +64,7 @@ def setup_browser_daemon(primary_port: int = 9222):
         chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
         exe = brave_path if os.path.exists(brave_path) else chrome_path
         print("  Run this command in terminal to launch your AI-authorized browser:")
-        print(f'  & "{exe}" --remote-debugging-port={primary_port} --user-data-dir="%USERPROFILE%\\.authorized_ai_browser" --remote-allow-origins=*')
+        print(f'  & "{exe}" --remote-debugging-port={primary_port} --user-data-dir="$env:USERPROFILE\\.authorized_ai_browser" --remote-allow-origins=*')
     else:
         print(f"  google-chrome --remote-debugging-port={primary_port} --user-data-dir=\"$HOME/.authorized_ai_browser\" &")
 
