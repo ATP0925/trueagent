@@ -46,7 +46,7 @@ def cmd_scan(args):
     else:
         diff_text = args.file
 
-    findings = guard.scan_diff(diff_text)
+    findings = guard.scan_text(diff_text, source_name=args.file if os.path.isfile(args.file) else "text")
     print(f"🛡️ SentinelGuard Scan Results ({len(findings)} findings):")
     if not findings:
         print("  ✅ Clean! Zero secrets or credentials detected.")

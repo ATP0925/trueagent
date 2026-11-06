@@ -122,13 +122,21 @@ class VoxAudioStreamManager:
                 break
 
         if len(buf) >= needed:
-            to_play = buf[:needed]
-            rem = buf[needed:]
+            to_play = bytes(buf[:needed])
+            rem = bytes(buf[needed:])
             if rem:
-                self.output_queue.queue.appendleft(bytes(rem))
-            outdata[:, 0] = np.frombuffer(to_play, dtype=np.int16).astype(np.float32) / 32767.0
+                # Thread-safe: put remainder back as a regular queue item
+                try:
+                    self.output_queue.put_nowait(rem)
+                except queue.Full:
+                    pass
+            pcm = np.frombuffer(to_play, dtype=np.int16).astype(np.float32) / 32767.0
+            outdata[:, 0] = pcm
             self.is_playing = True
         elif len(buf) > 0:
+            # Pad odd bytes to even length for int16 conversion
+            if len(buf) % 2 != 0:
+                buf.append(0)
             to_play = bytes(buf)
             audio = np.frombuffer(to_play, dtype=np.int16).astype(np.float32) / 32767.0
             outdata[:len(audio), 0] = audio

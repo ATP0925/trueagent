@@ -105,9 +105,18 @@ def speak_native(text: str) -> bool:
     """Tier 3: 100% offline OS native speech."""
     try:
         if sys.platform == "win32":
-            escaped = text.replace('"', '""').replace("'", "''")
-            ps_cmd = f'Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak("{escaped}")'
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], check=True, timeout=10)
+            # Pass text via stdin to prevent PowerShell injection
+            ps_script = '''
+            Add-Type -AssemblyName System.Speech
+            $text = [Console]::In.ReadToEnd()
+            $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+            $synth.Speak($text)
+            '''
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_script],
+                input=text, text=True, check=True, timeout=15,
+                capture_output=True
+            )
             return True
         elif sys.platform == "darwin":
             subprocess.run(["say", text], check=True, timeout=10)

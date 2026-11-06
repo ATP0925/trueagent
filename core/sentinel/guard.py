@@ -44,3 +44,28 @@ class SentinelGuard:
                         })
         return findings
 
+    def scan_text(self, text: str, source_name: str = "text") -> List[Dict[str, Any]]:
+        """Scans arbitrary text (file content) for secrets. Auto-detects diff format."""
+        # Auto-detect unified diff format
+        stripped = text.lstrip()
+        if stripped.startswith("diff ") or stripped.startswith("--- "):
+            return self.scan_diff(text)
+        
+        # Normal file scan - check ALL lines
+        findings = []
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            content = line.strip()
+            if not content:
+                continue
+            for cat, pat in self.patterns.items():
+                for match in re.finditer(pat, content):
+                    matched = match.group(0)
+                    masked = matched[:3] + "*" * (len(matched) - 6) + matched[-3:] if len(matched) > 8 else "***"
+                    findings.append({
+                        "line": line_no,
+                        "type": cat,
+                        "sample": masked,
+                        "source": source_name
+                    })
+        return findings
+
