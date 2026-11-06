@@ -44,6 +44,8 @@ class ReviewForge:
                 if re.search(r"\b(?:console\.log|debugger|import\s+pdb|breakpoint\(\))\b", content):
                     findings.append({
                         "file": current_file,
+                        "line": line_no,
+                        "rule": "RESIDUAL_DEBUG",
                         "type": "RESIDUAL_DEBUG",
                         "severity": "LOW",
                         "message": f"Leftover debugging statement: `{content[:60]}`"
@@ -53,6 +55,8 @@ class ReviewForge:
                 if re.search(r"""(?:SELECT|INSERT|UPDATE|DELETE).*?['"]\s*\+\s*\w+""", content, re.I):
                     findings.append({
                         "file": current_file,
+                        "line": line_no,
+                        "rule": "SQL_CONCATENATION",
                         "type": "SQL_CONCATENATION",
                         "severity": "HIGH",
                         "message": "Potential SQL injection vulnerability via raw string concatenation."
@@ -62,6 +66,8 @@ class ReviewForge:
                 if re.search(r"\bexcept\s*:\s*(?:pass)?|\bcatch\s*\([^)]*\)\s*\{\s*\}", content):
                     findings.append({
                         "file": current_file,
+                        "line": line_no,
+                        "rule": "SILENT_EXCEPTION",
                         "type": "SILENT_EXCEPTION",
                         "severity": "MEDIUM",
                         "message": "Broad exception without explicit type or handling."

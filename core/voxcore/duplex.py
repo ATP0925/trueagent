@@ -130,14 +130,19 @@ class VoxAudioStreamManager:
                     self.output_queue.put_nowait(rem)
                 except queue.Full:
                     pass
+            if len(to_play) % 2 != 0:
+                to_play = to_play[:-1]  # Truncate to even bytes for int16
             pcm = np.frombuffer(to_play, dtype=np.int16).astype(np.float32) / 32767.0
             outdata[:, 0] = pcm
             self.is_playing = True
         elif len(buf) > 0:
-            # Pad odd bytes to even length for int16 conversion
-            if len(buf) % 2 != 0:
-                buf.append(0)
             to_play = bytes(buf)
+            if len(to_play) % 2 != 0:
+                to_play = to_play[:-1]  # Truncate to even bytes for int16
+            if len(to_play) == 0:
+                outdata.fill(0.0)
+                self.is_playing = False
+                return
             audio = np.frombuffer(to_play, dtype=np.int16).astype(np.float32) / 32767.0
             outdata[:len(audio), 0] = audio
             outdata[len(audio):, 0] = 0.0

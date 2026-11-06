@@ -48,6 +48,11 @@ class TestTrueAgent(unittest.TestCase):
         analysis = ReviewForge.analyze_diff(fake_diff)
         self.assertEqual(analysis["total_files"], 1)
         self.assertEqual(analysis["total_findings"], 3)
+        for f in analysis["findings"]:
+            self.assertIn("line", f)
+            self.assertIn("rule", f)
+            self.assertIsInstance(f["line"], int)
+            self.assertIsInstance(f["rule"], str)
 
     def test_sentinel_guard_detects_secrets(self):
         guard = SentinelGuard()
@@ -137,6 +142,50 @@ class TestTrueAgent(unittest.TestCase):
             if sys.platform == "win32":
                 self.assertIn("-NoProfile", args[0])
                 self.assertEqual(kwargs.get("input"), "Hello test voice")
+
+    def test_sentinel_guard_detects_sts_and_unquoted_secrets(self):
+        guard = SentinelGuard()
+        # Programmatic construction
+        sts_token = "ASIA" + "1234567890ABCDEF"
+        unquoted_secret = "api_key = " + "TestSecret123456Key!"
+        diff_text = f"+sts = '{sts_token}'\n+{unquoted_secret}\n"
+        findings = guard.scan_diff(diff_text)
+        types = [f["type"] for f in findings]
+        self.assertIn("aws_sts_key", types)
+        self.assertIn("generic_secret_unquoted", types)
+        for f in findings:
+            self.assertIn("rule", f)
+            self.assertIn("line", f)
+
+    def test_voxcore_odd_byte_truncation_safety(self):
+        mgr = VoxAudioStreamManager(input_rate=16000, output_rate=24000, chunk_size=256)
+        # Put 257 bytes into output queue (odd bytes, partial buffer < needed 512)
+        odd_bytes = b"\x01" * 257
+        mgr.output_queue.put(odd_bytes)
+
+        outdata = np.zeros((256, 1), dtype=np.float32)
+        # Must not raise ValueError: buffer size must be a multiple of element size
+        mgr._output_callback(outdata, frames=256, time_info=None, status=None)
+        self.assertTrue(mgr.is_playing)
+
+    def test_voxcore_speak_inside_event_loop(self):
+        import asyncio
+        from core.voxcore.speak import speak
+        with patch("core.voxcore.speak._run_async_tts", return_value=True) as mock_tts:
+            async def run_inside_loop():
+                speak("Test voice from async loop")
+            asyncio.run(run_inside_loop())
+            mock_tts.assert_called_once()
+
+    def test_voxcore_play_audio_wmplayer_com(self):
+        from core.voxcore.speak import play_audio
+        with patch("subprocess.run") as mock_run:
+            # Route 1 (ffplay) fails, triggering Route 2 (WMPlayer COM)
+            mock_run.side_effect = [Exception("ffplay not found"), unittest.mock.MagicMock(returncode=0)]
+            play_audio("C:/temp/test.mp3")
+            self.assertEqual(mock_run.call_count, 2)
+            args, kwargs = mock_run.call_args_list[1]
+            self.assertIn("WMPlayer.OCX", args[0][3])
 
 
 if __name__ == "__main__":

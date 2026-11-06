@@ -9,6 +9,8 @@ import re
 import subprocess
 import asyncio
 import json
+import uuid
+import tempfile
 from typing import Optional
 
 
@@ -77,8 +79,7 @@ async def speak_edge_tts(text: str, voice: str = "hi-IN-MadhurNeural") -> bool:
     """Tier 1: Cloud neural speech via edge-tts."""
     try:
         import edge_tts
-        import tempfile
-        temp_mp3 = os.path.join(tempfile.gettempdir(), "trueagent_vox.mp3")
+        temp_mp3 = os.path.join(tempfile.gettempdir(), f"trueagent_vox_{uuid.uuid4().hex[:8]}.mp3")
         communicate = edge_tts.Communicate(text, voice)
         await communicate.save(temp_mp3)
         play_audio(temp_mp3)
@@ -91,8 +92,7 @@ def speak_gtts(text: str, lang: str = "hi") -> bool:
     """Tier 2: Cloud fallback speech via gTTS."""
     try:
         from gtts import gTTS
-        import tempfile
-        temp_mp3 = os.path.join(tempfile.gettempdir(), "trueagent_vox_gtts.mp3")
+        temp_mp3 = os.path.join(tempfile.gettempdir(), f"trueagent_vox_{uuid.uuid4().hex[:8]}.mp3")
         tts = gTTS(text=text, lang=lang)
         tts.save(temp_mp3)
         play_audio(temp_mp3)
@@ -131,17 +131,49 @@ def speak_native(text: str) -> bool:
 def play_audio(file_path: str):
     """Plays audio via available OS media handlers."""
     if sys.platform == "win32":
+        # Route 1: ffplay
         try:
             subprocess.run(["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", file_path], check=True, timeout=15)
             return
         except Exception:
             pass
+        # Route 2: WMPlayer COM (plays MP3 natively)
         try:
-            ps_cmd = f"(New-Object Media.SoundPlayer '{file_path}').PlaySync()"
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=15)
+            ps_cmd = (
+                f'$p = New-Object -ComObject WMPlayer.OCX;'
+                f'$p.URL = "{file_path.replace(chr(92), "/")}";'
+                f'$p.controls.play();'
+                f'Start-Sleep -Milliseconds 500;'
+                f'while($p.playState -eq 3){{Start-Sleep -Milliseconds 100}};'
+                f'$p.close();'
+            )
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=20, capture_output=True)
             return
         except Exception:
             pass
+        # Route 3: PowerShell SoundPlayer (WAV only)
+        try:
+            ps_cmd = f"(New-Object Media.SoundPlayer '{file_path}').PlaySync()"
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=15)
+        except Exception:
+            pass
+
+
+def _run_async_tts(text: str, voice: str = "hi-IN-MadhurNeural") -> bool:
+    """Runs async TTS in dedicated event loop thread."""
+    import threading
+    result = [False]
+    def _worker():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result[0] = loop.run_until_complete(speak_edge_tts(text, voice))
+        finally:
+            loop.close()
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    t.join(timeout=20)
+    return result[0]
 
 
 def speak(text: str, custom_callsign: str = None):
@@ -150,9 +182,9 @@ def speak(text: str, custom_callsign: str = None):
     callsign = custom_callsign or cfg.get("persona", {}).get("callsign", "Operator")
     clean = sanitize_text(text, callsign)
 
-    # Tier 1
+    # Tier 1 - use dedicated event loop to avoid nested asyncio.run() crash
     try:
-        success = asyncio.run(speak_edge_tts(clean))
+        success = _run_async_tts(clean)
         if success:
             return
     except Exception:
