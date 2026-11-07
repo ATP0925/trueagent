@@ -154,6 +154,30 @@ def _set_speaking_lock(active: bool):
         pass
 
 
+def _run_monitored_playback(cmd: list, timeout: float = 20) -> bool:
+    """Executes playback process while polling for instant user barge-in abort signal."""
+    if os.path.exists(ABORT_FILE):
+        return False
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        start_t = time.time()
+        while proc.poll() is None:
+            if os.path.exists(ABORT_FILE):
+                proc.terminate()
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return False
+            if time.time() - start_t > timeout:
+                proc.kill()
+                return False
+            time.sleep(0.04)
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
 def play_audio(file_path: str):
     """Plays audio via available OS media handlers with barge-in support."""
     if os.path.exists(ABORT_FILE):
@@ -162,8 +186,8 @@ def play_audio(file_path: str):
     if sys.platform == "win32":
         # Route 1: ffplay
         try:
-            subprocess.run(["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", file_path], check=True, timeout=15)
-            return
+            if _run_monitored_playback(["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", file_path], timeout=15):
+                return
         except Exception:
             pass
         # Route 2: WMPlayer COM (plays MP3 natively)
@@ -173,17 +197,18 @@ def play_audio(file_path: str):
                 f'$p.URL = "{file_path.replace(chr(92), "/")}";'
                 f'$p.controls.play();'
                 f'Start-Sleep -Milliseconds 400;'
-                f'while($p.playState -eq 3){{Start-Sleep -Milliseconds 100}};'
+                f'while($p.playState -eq 3){{Start-Sleep -Milliseconds 80}};'
                 f'$p.close();'
             )
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=20, capture_output=True)
-            return
+            if _run_monitored_playback(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=20):
+                return
         except Exception:
             pass
         # Route 3: PowerShell SoundPlayer (WAV only)
         try:
             ps_cmd = f"(New-Object Media.SoundPlayer '{file_path}').PlaySync()"
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=15)
+            if _run_monitored_playback(["powershell", "-NoProfile", "-Command", ps_cmd], timeout=15):
+                return
         except Exception:
             pass
 

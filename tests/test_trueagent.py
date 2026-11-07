@@ -184,12 +184,12 @@ class TestTrueAgent(unittest.TestCase):
 
     def test_voxcore_play_audio_wmplayer_com(self):
         from core.voxcore.speak import play_audio
-        with patch("subprocess.run") as mock_run:
+        with patch("core.voxcore.speak._run_monitored_playback") as mock_play:
             # Route 1 (ffplay) fails, triggering Route 2 (WMPlayer COM)
-            mock_run.side_effect = [Exception("ffplay not found"), unittest.mock.MagicMock(returncode=0)]
+            mock_play.side_effect = [False, True]
             play_audio("C:/temp/test.mp3")
-            self.assertEqual(mock_run.call_count, 2)
-            args, kwargs = mock_run.call_args_list[1]
+            self.assertEqual(mock_play.call_count, 2)
+            args, kwargs = mock_play.call_args_list[1]
             self.assertIn("WMPlayer.OCX", args[0][3])
 
     def test_webpilot_totp_verification(self):
