@@ -239,6 +239,14 @@ class TestTrueAgent(unittest.TestCase):
         self.assertNotIn("%USERPROFILE%", src)
         self.assertIn("$env:USERPROFILE", src)
 
+    def test_voxcore_speaking_lock_and_abort(self):
+        from core.voxcore.speak import _set_speaking_lock, LOCK_FILE, ABORT_FILE
+        import tempfile
+        _set_speaking_lock(True)
+        self.assertTrue(os.path.exists(LOCK_FILE))
+        _set_speaking_lock(False)
+        self.assertFalse(os.path.exists(LOCK_FILE))
+
 
 if __name__ == "__main__":
     unittest.main()

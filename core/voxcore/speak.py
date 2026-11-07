@@ -129,8 +129,35 @@ def speak_native(text: str) -> bool:
         return False
 
 
+LOCK_FILE = os.path.join(tempfile.gettempdir(), "live_voice_agent_speaking.lock")
+ABORT_FILE = os.path.join(tempfile.gettempdir(), "live_voice_barge_in.signal")
+
+
+def _set_speaking_lock(active: bool):
+    """Sets speaking lock so duplex microphone does not transcribe assistant's own voice."""
+    try:
+        if active:
+            if os.path.exists(ABORT_FILE):
+                try:
+                    os.remove(ABORT_FILE)
+                except Exception:
+                    pass
+            payload = json.dumps({"pid": os.getpid(), "timestamp": time.time()})
+            with open(LOCK_FILE, "w", encoding="utf-8") as f:
+                f.write(payload)
+        else:
+            time.sleep(0.40)  # Reverb dampening grace period
+            if os.path.exists(LOCK_FILE):
+                os.remove(LOCK_FILE)
+    except Exception:
+        pass
+
+
 def play_audio(file_path: str):
-    """Plays audio via available OS media handlers."""
+    """Plays audio via available OS media handlers with barge-in support."""
+    if os.path.exists(ABORT_FILE):
+        return
+
     if sys.platform == "win32":
         # Route 1: ffplay
         try:
@@ -144,7 +171,7 @@ def play_audio(file_path: str):
                 f'$p = New-Object -ComObject WMPlayer.OCX;'
                 f'$p.URL = "{file_path.replace(chr(92), "/")}";'
                 f'$p.controls.play();'
-                f'Start-Sleep -Milliseconds 500;'
+                f'Start-Sleep -Milliseconds 400;'
                 f'while($p.playState -eq 3){{Start-Sleep -Milliseconds 100}};'
                 f'$p.close();'
             )
@@ -178,25 +205,36 @@ def _run_async_tts(text: str, voice: str = "hi-IN-MadhurNeural") -> bool:
 
 
 def speak(text: str, custom_callsign: str = None):
-    """Unified entrypoint: Executes 3-tier zero-fail speech synthesis."""
+    """Unified entrypoint: Executes 3-tier zero-fail speech synthesis with echo cancellation lock."""
+    if os.path.exists(ABORT_FILE):
+        return
+
     cfg = load_config()
     callsign = custom_callsign or cfg.get("persona", {}).get("callsign", "Operator")
     clean = sanitize_text(text, callsign)
 
-    # Tier 1 - use dedicated event loop to avoid nested asyncio.run() crash
+    _set_speaking_lock(True)
     try:
-        success = _run_async_tts(clean)
-        if success:
+        # Tier 1 - use dedicated event loop to avoid nested asyncio.run() crash
+        try:
+            success = _run_async_tts(clean)
+            if success or os.path.exists(ABORT_FILE):
+                return
+        except Exception:
+            pass
+
+        # Tier 2
+        if os.path.exists(ABORT_FILE):
             return
-    except Exception:
-        pass
+        if speak_gtts(clean):
+            return
 
-    # Tier 2
-    if speak_gtts(clean):
-        return
-
-    # Tier 3 (Offline guaranteed)
-    speak_native(clean)
+        # Tier 3 (Offline guaranteed)
+        if os.path.exists(ABORT_FILE):
+            return
+        speak_native(clean)
+    finally:
+        _set_speaking_lock(False)
 
 
 if __name__ == "__main__":
